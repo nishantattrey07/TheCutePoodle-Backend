@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     email: { type: String, unique: true },
     phoneNumber: { type: String, required: true },
+    role: { type: String, enum: ["user", "petSitter"], required: true },
     pet: [{type:mongoose.Schema.Types.ObjectId,ref:"Pet"}]
 })
 

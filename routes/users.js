@@ -3,7 +3,7 @@ const userMiddleware = require("../middleware/user");
 const zod = require('zod');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { User, Task } = require("../database")
+const { User, Pet } = require("../database")
 const router = Router();
 require('dotenv').config();
 
@@ -14,7 +14,8 @@ const userSchema = zod.object({
     username: zod.string().min(3),
     password: zod.string().min(9),
     email: zod.string().email(),
-    phoneNumber: zod.string().min(10).max(10)
+    phoneNumber: zod.string().min(10).max(10),
+    role: zod.enum(['user', 'petSitter'])
 });
 
 
@@ -25,8 +26,8 @@ function validateUser(name, username, password, email,phoneNumber) {
 
 
 router.post('/signup', async (req, res) => {
-    const { name, username, password, email, phoneNumber } = req.body;
-    if (validateUser(name, username, password, email,phoneNumber)) {
+    const { name, username, password, email, phoneNumber,role } = req.body;
+    if (validateUser(name, username, password, email,phoneNumber,role)) {
         try {
             const existingUser = await User.findOne({ username: username, email: email });
             const existingUsername = await User.findOne({ username: username });
@@ -40,9 +41,9 @@ router.post('/signup', async (req, res) => {
                 }
                 else {
                     const hashPassword = await bcrypt.hash(password, saltRounds);
-                    const newUser = new User({ name, username, password: hashPassword, email });
+                    const newUser = new User({ name, username, password: hashPassword, email,phoneNumber,role });
                     await newUser.save();
-                    const token = jwt.sign({ username: username }, process.env.TOKEN_SECRET, { expiresIn: '7d' });
+                    const token = jwt.sign({ username: user.username, role: user.role }, process.env.JWT_SECRET);
                     console.log("User is being saved")
                     res.status(201).json({
                         token: token,
@@ -67,21 +68,35 @@ router.post('/signup', async (req, res) => {
     }
 });
 
-router.post('/signin', async (req, res) => {
+router.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    const existingUser = await User.findOne({ username: username });
-    const authenticatePassword = await bcrypt.compare(password, existingUser.password);
-    if (existingUser && authenticatePassword) {
-        const token = jwt.sign({ username: username }, process.env.TOKEN_SECRET, { expiresIn: '7d' });
-        res.header('auth-token', token).json({
-            token: token
-        });
+    const user = await User.findOne({ username });
+    if (user && bcrypt.compareSync(password, user.password)) {
+        const token = jwt.sign({ username: user.username, role: user.role }, process.env.JWT_SECRET);
+        res.status(200).send({ message: 'Login successful', token });
+    } else {
+        res.status(401).send({ message: 'Invalid username or password' });
     }
-    else {
-        return res.status(401).send('Wrong credentials');
+});
+
+router.post('/addpet', userMiddleware, async (req, res) => {
+    const { name, type, breed, age, size, description } = req.body;
+    const { username } = req.user;
+    const pet = new Pet({ name, type, breed, age, size, description });
+    await pet.save();
+    const user = await User.findOneAndUpdate({ username: username }, { $set: { pet: pet._id } });
+    res.status(200).send({ message: 'Pet added successfully' });
+});
+
+router.put('/editpet/:petId', userMiddleware, async (req, res) => {
+    const { name, type, breed, age, size, description } = req.body;
+    const petId = req.params.petId;
+    const pet = await Pet.findByIdAndUpdate(petId, { name, type, breed, age, size, description }, { new: true });
+    if (pet) {
+        res.status(200).send({ message: 'Pet updated successfully', pet });
+    } else {
+        res.status(404).send({ message: 'Pet not found' });
     }
-
-})
-
+});
 
 module.exports = router;
