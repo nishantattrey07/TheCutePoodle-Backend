@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 // app.use("/petSitter", petSitter)
-// app.use("/user", userRouter)
+app.use("/user", userRouter)
 const port = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
