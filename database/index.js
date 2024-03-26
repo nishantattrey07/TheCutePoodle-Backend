@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     email: { type: String, unique: true },
     phoneNumber: { type: String, required: true },
-    role: { type: String, enum: ["user", "petSitter", "both"], required: true },
+    role: { type: String, enum: ["petParent", "petSitter", "both"], required: true },
     pet: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pet" }],
     profileCompleted: { type: Boolean, default: false },
     address: { type: String, required: true },
@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: function () { return this.role === 'petSitter' || this.role === 'both'; }
     },
-    rate: {
+    price: {
         type: Number,
         required: function () { return this.role === 'petSitter' || this.role === 'both'; }
     },

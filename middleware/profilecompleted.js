@@ -1,6 +1,6 @@
 const { User } = require("../database");
 function profileMiddleware(req, res, next) {
-    User.findById(req.user._id)
+    User.findOne({ username: req.user })
         .then(user => {
             if (user.profileCompleted) {
                 next();

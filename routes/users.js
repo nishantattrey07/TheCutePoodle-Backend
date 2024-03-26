@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const { User, Pet } = require("../database");
 const checkProfileCompletion = require("../middleware/profilecompleted");
 const profileMiddleware = require("../middleware/profilecompleted");
+const { log } = require("console");
 const router = Router();
 require('dotenv').config();
 
@@ -17,13 +18,13 @@ const userSchema = zod.object({
     password: zod.string().min(9),
     email: zod.string().email(),
     phoneNumber: zod.string().min(10).max(10),
-    role: zod.enum(['user', 'petSitter', 'both']),
+    role: zod.enum(['petParent', 'petSitter', 'both']),
     address: zod.string()
 });
 
 const petSitterSchema = zod.object({
     experience: zod.string(),
-    rate: zod.number(),
+    price: zod.number(),
     rating: zod.number(),
     availability: zod.string()
 })
@@ -38,13 +39,9 @@ const petSchema = zod.object({
     description: zod.string()
 });
 
-function validateUser(name, username, password, email, phoneNumber, role, address, experience, rate, rating, availability) {
-    let data = userSchema.safeParse({ name, username, password, email, phoneNumber, role, address});
+function validateUser(name, username, password, email, phoneNumber, role) {
+    let data = userSchema.safeParse({ name, username, password, email, phoneNumber, role });
     if (data.success) {
-        if (role === 'petSitter' || role === 'both') {
-            let petSitterData = petSitterSchema.safeParse({ experience, rate, rating, availability });
-            return petSitterData.success ? true : false;
-        }
         return true;
     }
     return false;
@@ -176,4 +173,32 @@ router.get('/dashboard', userMiddleware, profileMiddleware, async (req, res) => 
     res.status(200).json(user);
  })
 
+router.post('/complete-profile', userMiddleware, async (req, res) => {
+    const { username } = req.user;
+    const user = await User.findOne({ username: username });
+    if (user.role === "petParent") {
+        try {
+            const { address } = req.body;
+            const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, profileCompleted: true }, { new: true });
+            res.status(200).redirect('/dashboard');
+        }
+        catch (err) {
+            console.log(err);
+            res.status(400).send("Invalid Input");
+        }
+        
+    }
+    else {
+        try {
+            const { address, experience, price, availability } = req.body;
+            const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, experience: experience, price: price, availability: availability, profileCompleted: true }, { new: true });
+            res.status(200).redirect('/dashboard');
+        }
+        catch (err) {
+            console.log(err);
+            res.status(400).send("Invalid Input");
+        }
+    
+    }
+});
 module.exports = router;
