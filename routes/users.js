@@ -4,7 +4,6 @@ const zod = require('zod');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const { User, Pet } = require("../database");
-const checkProfileCompletion = require("../middleware/profilecompleted");
 const profileMiddleware = require("../middleware/profilecompleted");
 const { log } = require("console");
 const router = Router();
@@ -23,9 +22,9 @@ const userSchema = zod.object({
 });
 
 const petSitterSchema = zod.object({
+    address: zod.string(),
     experience: zod.string(),
     price: zod.number(),
-    rating: zod.number(),
     availability: zod.string()
 })
 
@@ -57,6 +56,15 @@ function validatePet(name, type, breed, age, size, color, description) {
     }
 }
 
+function valiidateUpdatedUser(address, experience, price, availability) {
+    let data = petSitterSchema.safeParse({ address, experience, price, availability });
+    if (data.success) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
 
 router.post('/signup', async (req, res) => {
     const { name, username, password, email, phoneNumber,role } = req.body;
@@ -115,10 +123,15 @@ router.post('/login', async (req, res) => {
 router.post('/addpet', userMiddleware, async (req, res) => {
     const { name, type, breed, age, size,color, description } = req.body;
     const { username } = req.user;
-    const pet = new Pet({ name, type, breed, age, size,color, description });
-    await pet.save();
-    const user = await User.findOneAndUpdate({ username: username }, { $set: { pet: pet._id } });
-    res.status(200).send({ message: 'Pet added successfully' });
+    if (!validatePet(name, type, breed, age, size, color, description)) {
+        return res.status(400).send("Invalid Input");
+    }
+    else {
+        const pet = new Pet({ name, type, breed, age, size, color, description });
+        await pet.save();
+        const user = await User.findOneAndUpdate({ username: username }, { $set: { pet: pet._id } });
+        res.status(200).send({ message: 'Pet added successfully' });
+    }
 });
 
 router.put('/editpet/:petId', userMiddleware, async (req, res) => {
@@ -191,8 +204,14 @@ router.post('/complete-profile', userMiddleware, async (req, res) => {
     else {
         try {
             const { address, experience, price, availability } = req.body;
-            const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, experience: experience, price: price, availability: availability, profileCompleted: true }, { new: true });
-            res.status(200).redirect('/dashboard');
+            if (!valiidateUpdatedUser(address, experience, price, availability)) {
+                return res.status(400).send("Invalid Input");
+            }
+            else {
+                const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, experience: experience, price: price, availability: availability, profileCompleted: true }, { new: true });
+                res.status(200).redirect('/dashboard');
+            }
+            
         }
         catch (err) {
             console.log(err);
