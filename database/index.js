@@ -8,34 +8,22 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     email: { type: String, unique: true },
     phoneNumber: { type: String, required: true },
-    role: { type: String, enum: ["petParent", "petSitter", "both"], required: true },
+    role: { type: String, enum: ["PetParent", "PetSitter", "Both"], required: true },
     pet: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pet" }],
     profileCompleted: { type: Boolean, default: false },
-    address: { type: String, required: true },
-    experience: {
-        type: String,
-        required: function () { return this.role === 'petSitter' || this.role === 'both'; }
-    },
-    price: {
-        type: Number,
-        required: function () { return this.role === 'petSitter' || this.role === 'both'; }
-    },
-    rating: {
-        type: Number,
-        required: function () { return this.role === 'petSitter' || this.role === 'both'; }
-    },
-    availability: {
-        type: String,
-        required: function () { return this.role === 'petSitter' || this.role === 'both'; }
-    },
+    address: { type: String },
+    experience: {type: String,},
+    price: {type: Number,},
+    rating: {type: Number,},
+    availability: {type: String,},
 })
 
 const petSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    type: {type:String,required:true,enum:["dog","cat"]},
+    type: {type:String,required:true,enum:["Dog","Cat"]},
     breed: {type:String,required:true},
     age: { type: Number, required: true },
-    size: { type: String, required: true, enum: ["small", "medium", "large"] },
+    size: { type: String, required: true, enum: ["Small", "Medium", "Large"] },
     color: { type: String, required: true },
     description: { type: String },
     ownerId :{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }

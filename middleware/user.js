@@ -7,7 +7,7 @@ async function userMiddleware(req, res, next) {
     if (!token) return res.status(401).json({ message: "Access Denied" });
     else {
         try {
-            const authenticateUser = jwt.verify(token, process.env.TOKEN_SECRET);
+            const authenticateUser = jwt.verify(token, process.env.JWT_SECRET);
             const verify = await User.findOne({ username: authenticateUser.username });
             if (verify) {
                 console.log(authenticateUser);

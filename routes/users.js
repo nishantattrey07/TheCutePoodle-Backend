@@ -17,8 +17,7 @@ const userSchema = zod.object({
     password: zod.string().min(9),
     email: zod.string().email(),
     phoneNumber: zod.string().min(10).max(10),
-    role: zod.enum(['petParent', 'petSitter', 'both']),
-    address: zod.string()
+    role: zod.enum(['PetParent', 'PetSitter', 'Both']),
 });
 
 const petSitterSchema = zod.object({
@@ -30,10 +29,10 @@ const petSitterSchema = zod.object({
 
 const petSchema = zod.object({
     name: zod.string().min(2).max(20),
-    type: zod.enum(['dog', 'cat']),
+    type: zod.enum(['Dog', 'Cat']),
     breed: zod.string().min(3),
     age: zod.number().min(1),
-    size: zod.enum(['small', 'medium', 'large']),
+    size: zod.enum(['Small', 'Medium', 'Large']),
     color: zod.string(),
     description: zod.string()
 });
@@ -71,6 +70,7 @@ router.post('/signup', async (req, res) => {
     if (validateUser(name, username, password, email,phoneNumber,role)) {
         try {
             const existingUser = await User.findOne({ username: username, email: email });
+            const existingEmail = await User.findOne({email:email});
             const existingUsername = await User.findOne({ username: username });
             if (!existingUser) {
                 if (existingUsername) {
@@ -79,6 +79,11 @@ router.post('/signup', async (req, res) => {
                             message: `The username is already taken`,
                             username: existingUsername
                         });
+                }
+                else if (existingEmail) {
+                    return res.status(409).json({
+                        message: `The email is already taken`
+                    });
                 }
                 else {
                     const hashPassword = await bcrypt.hash(password, saltRounds);
@@ -122,15 +127,26 @@ router.post('/login', async (req, res) => {
 
 router.post('/addpet', userMiddleware, async (req, res) => {
     const { name, type, breed, age, size,color, description } = req.body;
-    const { username } = req.user;
+    const username = req.user;
     if (!validatePet(name, type, breed, age, size, color, description)) {
         return res.status(400).send("Invalid Input");
     }
     else {
-        const pet = new Pet({ name, type, breed, age, size, color, description });
-        await pet.save();
-        const user = await User.findOneAndUpdate({ username: username }, { $set: { pet: pet._id } });
-        res.status(200).send({ message: 'Pet added successfully' });
+        try {
+            const userId = await User.findOne({ username: username });
+            const pet = new Pet({ name, type, breed, age, size, color, description,ownerId:userId._id });
+            await pet.save();
+            const user = await User.findOneAndUpdate({ username: username }, { $push: { pet: pet._id } });
+            res.status(200).json({
+                message: 'Pet added successfully',
+                pet:pet
+            });
+        }
+        catch (err) { 
+            console.log(err);
+            return res.status(404).send(`Our server has some issue`);
+        }
+        
     }
 });
 
@@ -145,10 +161,14 @@ router.put('/editpet/:petId', userMiddleware, async (req, res) => {
     }
 });
 
-router.delete('/deletepet/:petId', userMiddleware, async (req, res) => { 
+router.delete('/deletepet/:petId', userMiddleware, async (req, res) => {
     const petId = req.params.petId;
     const pet = await Pet.findByIdAndDelete(petId);
     if (pet) {
+        const user = await User.findOneAndUpdate({ pet: petId }, { $pull: { pet: petId } }, { new: true });
+        if (!user) {
+            return res.status(404).send({ message: 'User not found or Pet not found in user' });
+        }
         res.status(200).send({ message: 'Pet deleted successfully' });
     } else {
         res.status(404).send({ message: 'Pet not found' });
@@ -174,20 +194,20 @@ router.get('/getpet/:petId', userMiddleware, async (req, res) => {
 });
 
 router.get('/getallpets', userMiddleware, async (req, res) => {
-    const { username } = req.user;
-    const user = await User.findOne({ username: username }).populate('pets');
+    const username  = req.user;
+    const user = await User.findOne({ username: username }).populate('pet');
     console.log(user.pets);
-    res.status(200).json(user.pets);
+    res.status(200).json(user.pet);
 });
 
 router.get('/dashboard', userMiddleware, profileMiddleware, async (req, res) => {
-    const { username } = req.user;
+    const username  = req.user;
     const user = await User.findOne({ username: username }, '-password -__v').populate('pet');
     res.status(200).json(user);
  })
 
 router.post('/complete-profile', userMiddleware, async (req, res) => {
-    const { username } = req.user;
+    const  username  = req.user;
     const user = await User.findOne({ username: username });
     if (user.role === "petParent") {
         try {
