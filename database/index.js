@@ -14,9 +14,14 @@ const userSchema = new mongoose.Schema({
     address: { type: String },
     experience: {type: String,},
     price: {type: Number,},
-    rating: {type: Number,},
-    availability: {type: String,},
-})
+    rating: { type: Number, },
+    availableTime: [{
+        day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+        start: { type: String },
+        end: { type: String }
+    }],
+    availability: {type: Boolean,default:true}
+}) 
 
 const petSchema = new mongoose.Schema({
     name: { type: String, required: true },

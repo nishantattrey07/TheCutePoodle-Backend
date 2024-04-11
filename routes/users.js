@@ -23,8 +23,7 @@ const userSchema = zod.object({
 const petSitterSchema = zod.object({
     address: zod.string(),
     experience: zod.string(),
-    price: zod.number(),
-    availability: zod.string()
+    price: zod.number()
 })
 
 const petSchema = zod.object({
@@ -55,8 +54,8 @@ function validatePet(name, type, breed, age, size, color, description) {
     }
 }
 
-function valiidateUpdatedUser(address, experience, price, availability) {
-    let data = petSitterSchema.safeParse({ address, experience, price, availability });
+function valiidateUpdatedUser(address, experience, price) {
+    let data = petSitterSchema.safeParse({ address, experience, price });
     if (data.success) {
         return true;
     }
