@@ -239,4 +239,42 @@ router.post('/complete-profile', userMiddleware, async (req, res) => {
     
     }
 });
+
+router.get('/feed', userMiddleware, async (req, res) => {
+    try {
+        const users = await User.find({
+            role: { $in: ['PetSitter', 'Both'] },
+            availability: true
+        });
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+})
+
+router.post('/book/:userId', userMiddleware, async (req, res) => {
+    const { start, end, petId } = req.body;
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (!user.availability) {
+            return res.status(400).json({ message: 'User is not available' });
+        }
+
+        user.bookings.push({ start, end, petId });
+        user.availability = false;
+        await user.save();
+
+        res.json({ message: 'Booking successful' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
 module.exports = router;

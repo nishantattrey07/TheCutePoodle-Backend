@@ -20,7 +20,12 @@ const userSchema = new mongoose.Schema({
         start: { type: String },
         end: { type: String }
     }],
-    availability: {type: Boolean,default:true}
+    availability: { type: Boolean, default: true },
+    bookings: [{
+        start: { type: Date, required: true },
+        end: { type: Date, required: true },
+        petId: { type: mongoose.Schema.Types.ObjectId, ref: "Pet", required: true }
+    }]
 }) 
 
 const petSchema = new mongoose.Schema({
