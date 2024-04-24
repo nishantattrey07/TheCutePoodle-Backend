@@ -9,11 +9,11 @@ const userSchema = new mongoose.Schema({
     email: { type: String, unique: true },
     phoneNumber: { type: String, required: true },
     role: { type: String, enum: ["PetParent", "PetSitter", "Both"], required: true },
-    pet: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pet" }],
+    pet: [{ type: mongoose.Schema.Types.ObjectId, ref: "Pet",default:null}],
     profileCompleted: { type: Boolean, default: false },
     address: { type: String },
-    experience: {type: String,},
-    price: {type: Number,},
+    experience: {type: String,default:null},
+    price: {type: Number,default:null},
     rating: { type: Number, },
     availableTime: [{
         day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
@@ -22,8 +22,9 @@ const userSchema = new mongoose.Schema({
     }],
     availability: { type: Boolean, default: true },
     bookings: [{
-        start: { type: Date, required: true },
-        end: { type: Date, required: true },
+        day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+        start: { type: String, required: true },
+        end: { type: String, required: true },
         petId: { type: mongoose.Schema.Types.ObjectId, ref: "Pet", required: true }
     }]
 }) 

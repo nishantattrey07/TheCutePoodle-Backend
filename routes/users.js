@@ -54,7 +54,7 @@ function validatePet(name, type, breed, age, size, color, description) {
     }
 }
 
-function valiidateUpdatedUser(address, experience, price) {
+function validateUpdatedUser(address, experience, price) {
     let data = petSitterSchema.safeParse({ address, experience, price });
     if (data.success) {
         return true;
@@ -76,7 +76,7 @@ router.post('/signup', async (req, res) => {
                     return res.status(409)
                         .json({
                             message: `The username is already taken`,
-                            username: existingUsername
+                            username: existingUsername.username
                         });
                 }
                 else if (existingEmail) {
@@ -208,11 +208,11 @@ router.get('/dashboard', userMiddleware, profileMiddleware, async (req, res) => 
 router.post('/complete-profile', userMiddleware, async (req, res) => {
     const  username  = req.user;
     const user = await User.findOne({ username: username });
-    if (user.role === "petParent") {
+    if (user.role === "PetParent") {
         try {
             const { address } = req.body;
             const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, profileCompleted: true }, { new: true });
-            res.status(200).redirect('/dashboard');
+            res.status(200).json(updatedUser);
         }
         catch (err) {
             console.log(err);
@@ -222,12 +222,12 @@ router.post('/complete-profile', userMiddleware, async (req, res) => {
     }
     else {
         try {
-            const { address, experience, price, availability } = req.body;
-            if (!valiidateUpdatedUser(address, experience, price, availability)) {
+            const { address, experience, price, availableTime } = req.body;
+            if (!validateUpdatedUser(address, experience, price)) {
                 return res.status(400).send("Invalid Input");
             }
             else {
-                const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, experience: experience, price: price, availability: availability, profileCompleted: true }, { new: true });
+                const updatedUser = await User.findOneAndUpdate({ username: username }, { address: address, experience: experience, price: price, availableTime: availableTime, profileCompleted: true }, { new: true });
                 res.status(200).redirect('/dashboard');
             }
             
@@ -253,21 +253,38 @@ router.get('/feed', userMiddleware, async (req, res) => {
 })
 
 router.post('/book/:userId', userMiddleware, async (req, res) => {
-    const { start, end, petId } = req.body;
+    const { day, start, end, petId } = req.body;
     const { userId } = req.params;
+    const username = req.user;
 
     try {
         const user = await User.findById(userId);
+        const userWhoBooks = await User.findOne({ username: username });
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User who is booking, not found' });
+        }
+        if (!user) {
+            return res.status(404).json({ message: 'PetSitter not found' });
         }
 
-        if (!user.availability) {
-            return res.status(400).json({ message: 'User is not available' });
+        const timeSlot = user.availableTime.find(slot => slot.day === day && slot.start <= start && slot.end >= end);
+        if (!timeSlot) {
+            return res.status(400).json({ message: 'User is not available at the requested time' });
         }
 
-        user.bookings.push({ start, end, petId });
-        user.availability = false;
+        userWhoBooks.bookings.push({ day, start, end, petId });
+        await userWhoBooks.save();
+
+        user.availableTime = user.availableTime.filter(slot => slot !== timeSlot);
+
+        // Add new time slots if the booking is in the middle of the available time slot
+        if (timeSlot.start < start) {
+            user.availableTime.push({ day, start: timeSlot.start, end: start });
+        }
+        if (timeSlot.end > end) {
+            user.availableTime.push({ day, start: end, end: timeSlot.end });
+        }
+
         await user.save();
 
         res.json({ message: 'Booking successful' });
